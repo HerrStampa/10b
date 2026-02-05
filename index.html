@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EU-Bürgerschaft – Karten sortieren</title>
+  <style>
+    :root{
+      --bg:#0b1220; --panel:#121b2e; --panel2:#0f172a; --text:#e5e7eb; --muted:#9ca3af;
+      --a:#22c55e; --b:#f59e0b; --c:#ef4444; --line:#24324f;
+      --shadow: 0 10px 25px rgba(0,0,0,.35);
+      --radius: 16px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 20% 0%, #111b33 0%, var(--bg) 50%, #070b14 100%);
+      color: var(--text);
+    }
+    header{
+      padding: 18px 16px 10px;
+      position: sticky; top:0; z-index: 5;
+      background: linear-gradient(to bottom, rgba(11,18,32,.95), rgba(11,18,32,.70));
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(36,50,79,.7);
+    }
+    h1{ margin:0; font-size: 18px; font-weight: 800; letter-spacing:.2px; }
+    .sub{ margin-top:4px; color: var(--muted); font-size: 13px; line-height:1.25; }
+
+    .topbar{
+      margin-top: 10px;
+      display:flex; flex-wrap:wrap; gap:10px;
+      align-items:center;
+    }
+    .btn{
+      appearance:none; border:1px solid rgba(36,50,79,.9);
+      background: rgba(18,27,46,.85);
+      color: var(--text);
+      padding: 10px 12px; border-radius: 12px; font-weight:700; font-size: 13px;
+      box-shadow: 0 6px 16px rgba(0,0,0,.22);
+    }
+    .btn:active{ transform: translateY(1px); }
+    .pill{
+      padding: 8px 10px; border-radius: 999px;
+      background: rgba(18,27,46,.8);
+      border:1px solid rgba(36,50,79,.9);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    main{ padding: 12px 12px 18px; }
+
+    .layout{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    /* iPad landscape: 2 columns top, then board */
+    @media (min-width: 720px){
+      .layout{ grid-template-columns: 360px 1fr; align-items:start; }
+    }
+
+    .panel{
+      background: rgba(18,27,46,.72);
+      border: 1px solid rgba(36,50,79,.9);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .panel .phead{
+      padding: 12px 12px;
+      border-bottom:1px solid rgba(36,50,79,.8);
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      background: rgba(15,23,42,.55);
+    }
+    .panel .ptitle{ font-weight:900; font-size: 14px; }
+    .panel .pbody{ padding: 10px 10px 12px; }
+
+    details{
+      border: 1px solid rgba(36,50,79,.9);
+      border-radius: 14px;
+      background: rgba(15,23,42,.55);
+      overflow:hidden;
+      margin-bottom: 10px;
+    }
+    summary{
+      list-style:none;
+      cursor:pointer;
+      padding: 12px 12px;
+      font-weight: 900;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    summary::-webkit-details-marker{ display:none; }
+    .details-body{ padding: 0 12px 12px; color: var(--muted); font-size: 13px; line-height: 1.35; }
+    .chipwrap{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    .chip{ font-size: 12px; padding: 7px 10px; border-radius: 999px; border:1px solid rgba(36,50,79,.95);
+      background: rgba(18,27,46,.75); color: var(--text);
+    }
+
+    /* Board */
+    .board{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    @media (min-width: 720px){
+      .board{ grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .col{
+      background: rgba(15,23,42,.40);
+      border: 1px solid rgba(36,50,79,.85);
+      border-radius: var(--radius);
+      overflow:hidden;
+      min-height: 280px;
+    }
+    .colhead{
+      padding: 12px 12px;
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      border-bottom:1px solid rgba(36,50,79,.85);
+      background: rgba(15,23,42,.70);
+    }
+    .colname{ font-weight: 950; font-size: 14px; }
+    .badge{
+      font-size: 12px; font-weight: 900;
+      padding: 6px 10px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+    }
+    .good{ background: rgba(34,197,94,.15); color: #bbf7d0; border-color: rgba(34,197,94,.25); }
+    .warn{ background: rgba(245,158,11,.16); color: #fde68a; border-color: rgba(245,158,11,.25); }
+    .bad{ background: rgba(239,68,68,.16); color: #fecaca; border-color: rgba(239,68,68,.25); }
+
+    .dropzone{
+      padding: 10px;
+      display:flex; flex-direction:column; gap:10px;
+      min-height: 230px;
+    }
+
+    .card{
+      background: rgba(18,27,46,.85);
+      border: 1px solid rgba(36,50,79,.95);
+      border-radius: 14px;
+      padding: 12px 12px;
+      box-shadow: 0 10px 20px rgba(0,0,0,.25);
+      touch-action: none;
+      user-select:none;
+      position: relative;
+    }
+    .card strong{ display:block; font-size: 13px; margin-bottom: 6px; }
+    .card .txt{ font-size: 13px; line-height: 1.25; color: var(--text); }
+    .card .meta{ margin-top: 8px; font-size: 11px; color: var(--muted); display:flex; justify-content:space-between; gap:10px; }
+    .grip{ font-weight: 900; opacity:.75; }
+
+    .dragging{
+      position: fixed !important;
+      z-index: 999;
+      width: min(520px, calc(100vw - 24px));
+      pointer-events:none;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 16px 40px rgba(0,0,0,.45);
+    }
+
+    .hintline{
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height:1.3;
+    }
+
+    /* Clustering inside "Stimmt" */
+    .clusterbar{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+      padding: 10px; border-top:1px solid rgba(36,50,79,.85);
+      background: rgba(15,23,42,.70);
+    }
+    .clusterwrap{
+      padding: 10px;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .cluster{
+      border: 1px dashed rgba(147,197,253,.35);
+      border-radius: 14px;
+      background: rgba(59,130,246,.08);
+      overflow:hidden;
+    }
+    .clusterhead{
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      padding: 10px 10px;
+      border-bottom:1px solid rgba(147,197,253,.25);
+    }
+    .clustername{
+      font-weight: 950;
+      font-size: 13px;
+      color: #dbeafe;
+    }
+    .clusterbtn{
+      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(36,50,79,.95);
+      background: rgba(18,27,46,.80);
+      color: var(--text);
+      font-weight: 900;
+    }
+    .clusterzone{
+      padding: 10px;
+      display:flex; flex-direction:column; gap:10px;
+      min-height: 56px;
+    }
+
+    .toast{
+      position: fixed;
+      left: 50%; bottom: 14px;
+      transform: translateX(-50%);
+      background: rgba(15,23,42,.9);
+      border: 1px solid rgba(36,50,79,.9);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .18s ease;
+      z-index: 1000;
+      max-width: 92vw;
+    }
+    .toast.show{ opacity: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>EU-Bürgerschaft: Karten sortieren & clustern</h1>
+    <div class="sub">Zieht die Karten in <b>Stimmt</b>, <b>Unsicher</b> oder <b>Unwahr</b>. Karten in <b>Stimmt</b> könnt ihr danach in Überschriften-Cluster einsortieren.</div>
+    <div class="topbar">
+      <button class="btn" id="btnReset">Zurücksetzen</button>
+      <button class="btn" id="btnShuffle">Neu mischen</button>
+      <span class="pill" id="countPill">0/15 sortiert</span>
+      <span class="pill" id="clusterPill">0 Cluster</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="layout">
+      <section class="panel" aria-label="Hilfen">
+        <div class="phead"><div class="ptitle">Differenzierung</div></div>
+        <div class="pbody">
+          <details>
+            <summary>Begriffserklärungen <span class="pill">aufklappen</span></summary>
+            <div class="details-body">
+              Nutzt diese Wörter für Begründungen oder Überschriften.
+              <div class="chipwrap" id="wordbank"></div>
+            </div>
+          </details>
+          <details>
+            <summary>Tipps zum Einsortieren <span class="pill">aufklappen</span></summary>
+            <div class="details-body">
+              <ul>
+                <li>Fragt euch: Geht es um <b>Bewegung</b>, <b>Arbeiten/Studieren</b>, <b>Wahlen</b>, <b>Schutz</b> oder <b>Beschwerden</b>?</li>
+                <li>Achtet auf Wörter wie <b>„automatisch“</b>, <b>„überall“</b>, <b>„gratis“</b>: Das kann ein Warnsignal sein.</li>
+                <li>Prüft: Ist das ein <b>Recht</b> (dürfen) oder nur ein <b>Service/Programm</b> (kann es geben, muss aber nicht)?</li>
+                <li>Wenn ihr euch nicht sicher seid: Erst in <b>Unsicher</b> legen und eine Rückfrage formulieren.</li>
+              </ul>
+            </div>
+          </details>
+          <div class="hintline">
+            Bedienhinweis: Karte antippen und ziehen. Wenn es hakelt: etwas länger drücken und dann ziehen.
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Sortierboard">
+        <div class="phead"><div class="ptitle">Sortierboard</div></div>
+        <div class="pbody">
+          <div class="board">
+            <div class="col" data-col="stimmt">
+              <div class="colhead">
+                <div class="colname">Stimmt</div>
+                <div class="badge good" id="cntStimmt">0</div>
+              </div>
+              <div class="dropzone" id="zoneStimmt" data-drop="stimmt"></div>
+
+              <div class="clusterbar">
+                <button class="btn" id="btnAddCluster">+ Überschrift</button>
+                <span class="pill">Clustern nur aus „Stimmt“</span>
+              </div>
+              <div class="clusterwrap" id="clusterWrap">
+                <div class="cluster" data-cluster="unassigned">
+                  <div class="clusterhead">
+                    <div class="clustername">Noch nicht zugeordnet</div>
+                    <button class="clusterbtn" data-action="rename" data-cluster="unassigned">Umbenennen</button>
+                  </div>
+                  <div class="clusterzone" data-drop="cluster:unassigned"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col" data-col="unsicher">
+              <div class="colhead">
+                <div class="colname">Unsicher</div>
+                <div class="badge warn" id="cntUnsicher">0</div>
+              </div>
+              <div class="dropzone" id="zoneUnsicher" data-drop="unsicher"></div>
+            </div>
+
+            <div class="col" data-col="unwahr">
+              <div class="colhead">
+                <div class="colname">Unwahr</div>
+                <div class="badge bad" id="cntUnwahr">0</div>
+              </div>
+              <div class="dropzone" id="zoneUnwahr" data-drop="unwahr"></div>
+            </div>
+          </div>
+
+          <div class="hintline">
+            Regel: Karten dürfen <b>nur</b> in Clustern liegen, wenn sie in „Stimmt“ einsortiert wurden.
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Start-Pool der Karten -->
+    <section class="panel" style="margin-top:12px" aria-label="Kartenpool">
+      <div class="phead"><div class="ptitle">Kartenpool</div><div class="pill" id="poolPill">15 Karten</div></div>
+      <div class="pbody">
+        <div class="dropzone" id="zonePool" data-drop="pool" style="min-height:140px"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // --- Card content ---
+    // Hinweis: 4 Karten sind bewusst unwahr (Ablenker). Nicht markieren für SuS.
+    const CARDS = [
+      { id:"c1",  title:"Freizügigkeit", text:"Ich darf in ein anderes EU-Land reisen und mich dort grundsätzlich frei bewegen.", tag:"Bewegung" },
+      { id:"c2",  title:"Aufenthalt", text:"Ich darf in einem anderen EU-Land grundsätzlich wohnen und mich dort aufhalten.", tag:"Bewegung" },
+      { id:"c3",  title:"Arbeit", text:"Ich darf in einem anderen EU-Land grundsätzlich eine Arbeit aufnehmen.", tag:"Arbeiten" },
+      { id:"c4",  title:"Studium/Ausbildung", text:"Ich darf in einem anderen EU-Land grundsätzlich studieren oder eine Ausbildung beginnen.", tag:"Lernen" },
+      { id:"c5",  title:"Kommunalwahl", text:"Wenn ich in einem anderen EU-Land wohne, darf ich dort bei Kommunalwahlen wählen.", tag:"Wahlen" },
+      { id:"c6",  title:"EU-Wahl", text:"Wenn ich in einem anderen EU-Land wohne, darf ich dort an der Europawahl teilnehmen.", tag:"Wahlen" },
+      { id:"c7",  title:"Konsularischer Schutz", text:"Wenn es in einem Nicht-EU-Land keine deutsche Botschaft gibt, kann ich Hilfe bei einer Botschaft eines anderen EU-Staates bekommen.", tag:"Schutz" },
+      { id:"c8",  title:"Petition", text:"Ich darf mich mit einer Petition an das Europäische Parlament wenden.", tag:"Mitwirkung" },
+      { id:"c9",  title:"Bürgerbeauftragter", text:"Ich darf mich beim Europäischen Bürgerbeauftragten beschweren, wenn EU-Institutionen unfair oder fehlerhaft handeln.", tag:"Mitwirkung" },
+      { id:"c10", title:"Gleichbehandlung", text:"In vielen Situationen habe ich in einem anderen EU-Land Anspruch darauf, nicht schlechter behandelt zu werden als Einheimische.", tag:"Gleichbehandlung" },
+      { id:"c11", title:"Rückkehr", text:"Ich darf jederzeit in mein Heimatland zurückkehren und dort leben.", tag:"Bewegung" },
+
+      // 4 unwahre/überzogene Karten
+      { id:"c12", title:"EU-Pass", text:"Als EU-Bürger bekomme ich automatisch einen einheitlichen EU-Pass, der meinen nationalen Pass ersetzt.", tag:"Ablenker" },
+      { id:"c13", title:"Gratis-ÖPNV", text:"Als EU-Bürger darf ich in jedem EU-Land kostenlos Bus und Bahn fahren.", tag:"Ablenker" },
+      { id:"c14", title:"EU-Polizei", text:"Als EU-Bürger kann ich bei jedem Problem direkt die EU-Polizei anrufen, die dann zuständig ist.", tag:"Ablenker" },
+      { id:"c15", title:"Automatisches Grundeinkommen", text:"Als EU-Bürger bekomme ich automatisch ein monatliches EU-Grundeinkommen.", tag:"Ablenker" },
+    ];
+
+    const WORDBANK = [
+      { term: "EU-Bürgerschaft", def: "Zusätzlicher Status für Menschen mit Staatsangehörigkeit eines EU-Staates. Sie ergänzt die nationale Staatsbürgerschaft." },
+      { term: "Staatsangehörigkeit", def: "Rechtliche Zugehörigkeit zu einem Staat (z. B. Deutschland). Davon hängt ab, ob man EU-Bürger ist." },
+      { term: "Freizügigkeit", def: "Recht, sich in der EU grundsätzlich frei zu bewegen, in anderen EU-Ländern zu reisen, zu wohnen und unter Bedingungen zu arbeiten." },
+      { term: "Aufenthaltsrecht", def: "Recht, sich in einem anderen Land aufzuhalten oder dort zu leben." },
+      { term: "Gleichbehandlung", def: "Grundsatz, dass man in bestimmten Bereichen nicht schlechter behandelt werden darf als Einheimische." },
+      { term: "Kommunalwahl", def: "Wahl auf Gemeinde- oder Stadtebene, z. B. für Stadtvertretung oder Bürgermeister." },
+      { term: "Europawahl", def: "Wahl des Europäischen Parlaments. EU-Bürger dürfen einmal wählen, entweder im Heimat- oder Wohnland." },
+      { term: "Petition", def: "Beschwerde oder Bitte an eine politische Stelle, um auf ein Problem aufmerksam zu machen." },
+      { term: "EU-Institution", def: "Organisation der EU, die Entscheidungen vorbereitet oder trifft, z. B. Parlament, Kommission, Rat." },
+      { term: "Bürgerbeauftragter", def: "Stelle, bei der man sich über Fehlverhalten von EU-Behörden beschweren kann." },
+      { term: "Konsularischer Schutz", def: "Hilfe durch Botschaften/Konsulate, z. B. bei Verlust von Dokumenten oder Notfällen im Ausland." },
+      { term: "Botschaft", def: "Vertretung eines Staates in einem anderen Land. Kümmert sich u. a. um Hilfe für Staatsbürger." },
+      { term: "Nicht-EU-Land", def: "Land, das nicht Mitglied der Europäischen Union ist." },
+      { term: "Recht vs. Programm", def: "Ein Recht gilt grundsätzlich für alle. Ein Programm/Angebot gibt es vielleicht, aber nicht automatisch überall." }
+    ];
+
+    // --- State ---
+    const state = {
+      placement: new Map(), // cardId -> location string e.g. "pool", "stimmt", "unsicher", "unwahr", "cluster:xyz"
+      clusters: [ { id:"unassigned", name:"Noch nicht zugeordnet" } ]
+    };
+
+    // --- Elements ---
+    const zonePool = document.getElementById("zonePool");
+    const zoneStimmt = document.getElementById("zoneStimmt");
+    const zoneUnsicher = document.getElementById("zoneUnsicher");
+    const zoneUnwahr = document.getElementById("zoneUnwahr");
+    const clusterWrap = document.getElementById("clusterWrap");
+
+    const btnReset = document.getElementById("btnReset");
+    const btnShuffle = document.getElementById("btnShuffle");
+    const btnAddCluster = document.getElementById("btnAddCluster");
+
+    const cntStimmt = document.getElementById("cntStimmt");
+    const cntUnsicher = document.getElementById("cntUnsicher");
+    const cntUnwahr = document.getElementById("cntUnwahr");
+    const countPill = document.getElementById("countPill");
+    const clusterPill = document.getElementById("clusterPill");
+    const poolPill = document.getElementById("poolPill");
+    const toast = document.getElementById("toast");
+
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(()=> toast.classList.remove("show"), 1600);
+    }
+
+    // --- Render helpers ---
+    function makeCard(card){
+      const el = document.createElement("div");
+      el.className = "card";
+      el.dataset.id = card.id;
+      el.innerHTML = `
+        <strong>${escapeHtml(card.title)}</strong>
+        <div class="txt">${escapeHtml(card.text)}</div>
+        <div class="meta"><span class="grip">⇢ ziehen</span></div>
+      `;
+      enableDrag(el);
+      return el;
+    }
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#39;");
+    }
+
+    function clearZones(){
+      [zonePool, zoneStimmt, zoneUnsicher, zoneUnwahr].forEach(z => z.innerHTML = "");
+      // clear cluster zones
+      clusterWrap.querySelectorAll(".clusterzone").forEach(z => z.innerHTML = "");
+    }
+
+    function updateCounts(){
+      const placed = { stimmt:0, unsicher:0, unwahr:0, pool:0 };
+      for (const [id, loc] of state.placement.entries()){
+        if (loc === "stimmt") placed.stimmt++;
+        else if (loc === "unsicher") placed.unsicher++;
+        else if (loc === "unwahr") placed.unwahr++;
+        else if (loc.startsWith("cluster:")) placed.stimmt++; // still counts as stimmt
+        else placed.pool++;
+      }
+
+      cntStimmt.textContent = placed.stimmt;
+      cntUnsicher.textContent = placed.unsicher;
+      cntUnwahr.textContent = placed.unwahr;
+
+      const sorted = placed.stimmt + placed.unsicher + placed.unwahr;
+      countPill.textContent = `${sorted}/15 sortiert`;
+
+      const clusterCount = state.clusters.length;
+      clusterPill.textContent = `${clusterCount} Cluster`;
+
+      // Pool count visual
+      const poolCount = CARDS.length - sorted;
+      poolPill.textContent = `${poolCount} Karten`;
+    }
+
+    function renderClusters(){
+      // Preserve existing cluster cards by reading current DOM and re-attaching later in renderAll
+      // Here we only render cluster containers.
+      const existing = new Map();
+      clusterWrap.querySelectorAll(".cluster").forEach(c => {
+        existing.set(c.getAttribute("data-cluster"), c);
+      });
+
+      // Remove all clusters and rebuild
+      clusterWrap.innerHTML = "";
+
+      for (const cl of state.clusters){
+        const cluster = document.createElement("div");
+        cluster.className = "cluster";
+        cluster.dataset.cluster = cl.id;
+        cluster.innerHTML = `
+          <div class="clusterhead">
+            <div class="clustername">${escapeHtml(cl.name)}</div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button class="clusterbtn" data-action="rename" data-cluster="${escapeHtml(cl.id)}">Umbenennen</button>
+              ${cl.id !== "unassigned" ? `<button class="clusterbtn" data-action="remove" data-cluster="${escapeHtml(cl.id)}">Löschen</button>` : ""}
+            </div>
+          </div>
+          <div class="clusterzone" data-drop="cluster:${escapeHtml(cl.id)}"></div>
+        `;
+        clusterWrap.appendChild(cluster);
+      }
+
+      clusterWrap.querySelectorAll("button.clusterbtn").forEach(btn => {
+        btn.addEventListener("click", (e)=>{
+          const action = btn.dataset.action;
+          const cid = btn.dataset.cluster;
+          if (action === "rename") renameCluster(cid);
+          if (action === "remove") removeCluster(cid);
+        });
+      });
+    }
+
+    function renderAll(){
+      clearZones();
+      renderClusters();
+
+      // Create a lookup for cluster zones
+      const clusterZones = new Map();
+      clusterWrap.querySelectorAll(".clusterzone").forEach(z => {
+        clusterZones.set(z.dataset.drop, z);
+      });
+
+      // Render cards by placement
+      const cardEls = new Map();
+      for (const card of CARDS){
+        cardEls.set(card.id, makeCard(card));
+      }
+
+      for (const card of CARDS){
+        const loc = state.placement.get(card.id) || "pool";
+        const el = cardEls.get(card.id);
+        if (loc === "pool") zonePool.appendChild(el);
+        else if (loc === "stimmt") zoneStimmt.appendChild(el);
+        else if (loc === "unsicher") zoneUnsicher.appendChild(el);
+        else if (loc === "unwahr") zoneUnwahr.appendChild(el);
+        else if (loc.startsWith("cluster:")){
+          const key = loc;
+          const z = clusterZones.get(key) || clusterZones.get("cluster:unassigned");
+          z.appendChild(el);
+        } else {
+          zonePool.appendChild(el);
+        }
+      }
+
+      updateCounts();
+    }
+
+    // --- Clusters ---
+    function addCluster(){
+      const name = prompt("Überschrift eingeben (z. B. 'Bewegung', 'Wahlen', 'Schutz'):")?.trim();
+      if (!name) return;
+      const id = "cl" + Math.random().toString(16).slice(2,8);
+      state.clusters.push({ id, name });
+      renderAll();
+      showToast("Cluster hinzugefügt");
+    }
+
+    function renameCluster(id){
+      const cl = state.clusters.find(c => c.id === id);
+      if (!cl) return;
+      const name = prompt("Neue Überschrift:", cl.name)?.trim();
+      if (!name) return;
+      cl.name = name;
+      renderAll();
+    }
+
+    function removeCluster(id){
+      // Move any cards from this cluster back to unassigned
+      for (const [cardId, loc] of state.placement.entries()){
+        if (loc === `cluster:${id}`){
+          state.placement.set(cardId, "cluster:unassigned");
+        }
+      }
+      state.clusters = state.clusters.filter(c => c.id !== id);
+      renderAll();
+      showToast("Cluster gelöscht (Karten bleiben erhalten)");
+    }
+
+    // --- Dragging with Pointer Events (iPad-friendly) ---
+    let drag = null; // { el, id, offsetX, offsetY, startX, startY }
+
+    function enableDrag(el){
+      el.addEventListener("pointerdown", (e)=>{
+        // prevent page scroll while dragging
+        e.preventDefault();
+
+        const id = el.dataset.id;
+        const rect = el.getBoundingClientRect();
+        drag = {
+          el,
+          id,
+          startX: e.clientX,
+          startY: e.clientY,
+          offsetX: e.clientX - rect.left,
+          offsetY: e.clientY - rect.top
+        };
+
+        el.setPointerCapture(e.pointerId);
+        el.classList.add("dragging");
+        moveDragging(e.clientX, e.clientY);
+      }, { passive:false });
+
+      el.addEventListener("pointermove", (e)=>{
+        if (!drag || drag.el !== el) return;
+        e.preventDefault();
+        moveDragging(e.clientX, e.clientY);
+      }, { passive:false });
+
+      el.addEventListener("pointerup", (e)=>{
+        if (!drag || drag.el !== el) return;
+        e.preventDefault();
+
+        // Determine drop target
+        const target = document.elementFromPoint(e.clientX, e.clientY);
+        const drop = findDropTarget(target);
+
+        // Remove dragging styles first
+        el.classList.remove("dragging");
+        el.style.left = "";
+        el.style.top = "";
+
+        const cardId = drag.id;
+        drag = null;
+
+        if (!drop){
+          // snap back by re-render
+          renderAll();
+          return;
+        }
+
+        handleDrop(cardId, drop);
+      }, { passive:false });
+
+      el.addEventListener("pointercancel", ()=>{
+        if (!drag || drag.el !== el) return;
+        el.classList.remove("dragging");
+        el.style.left = "";
+        el.style.top = "";
+        drag = null;
+        renderAll();
+      });
+    }
+
+    function moveDragging(x, y){
+      if (!drag) return;
+      drag.el.style.left = (x - drag.offsetX + drag.el.offsetWidth/2) + "px";
+      drag.el.style.top  = (y - drag.offsetY + drag.el.offsetHeight/2) + "px";
+    }
+
+    function findDropTarget(node){
+      let cur = node;
+      while (cur && cur !== document.body){
+        if (cur.dataset && cur.dataset.drop) return cur.dataset.drop;
+        cur = cur.parentElement;
+      }
+      return null;
+    }
+
+    function handleDrop(cardId, drop){
+      // Rule enforcement:
+      // - Clusters only accept cards that are in "Stimmt" (or already in another cluster)
+      // - Dropping into "Stimmt" puts card into the "Stimmt" column (not automatically a cluster)
+      if (drop.startsWith("cluster:")){
+        const current = state.placement.get(cardId) || "pool";
+        const allowed = (current === "stimmt" || current.startsWith("cluster:"));
+        if (!allowed){
+          showToast("Erst in 'Stimmt' einsortieren, dann clustern.");
+          renderAll();
+          return;
+        }
+        state.placement.set(cardId, drop);
+        renderAll();
+        return;
+      }
+
+      if (drop === "stimmt"){
+        // If card was in a cluster, keep it in the 'stimmt' column by placing it there
+        state.placement.set(cardId, "stimmt");
+        renderAll();
+        return;
+      }
+
+      if (drop === "unsicher"){
+        state.placement.set(cardId, "unsicher");
+        renderAll();
+        return;
+      }
+
+      if (drop === "unwahr"){
+        state.placement.set(cardId, "unwahr");
+        renderAll();
+        return;
+      }
+
+      if (drop === "pool"){
+        state.placement.set(cardId, "pool");
+        renderAll();
+        return;
+      }
+
+      renderAll();
+    }
+
+    // --- Setup ---
+    function shuffleArray(arr){
+      for (let i = arr.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function resetState(){
+      state.placement.clear();
+      for (const card of CARDS) state.placement.set(card.id, "pool");
+      state.clusters = [ { id:"unassigned", name:"Noch nicht zugeordnet" } ];
+      renderAll();
+      showToast("Alles zurückgesetzt");
+    }
+
+    function shuffleCards(){
+      shuffleArray(CARDS);
+      renderAll();
+      showToast("Karten gemischt");
+    }
+
+    // wordbank
+    const wordbank = document.getElementById("wordbank");
+    WORDBANK.forEach(item => {
+      const chip = document.createElement("div");
+      chip.className = "chip";
+      chip.innerHTML = `<b>${escapeHtml(item.term)}:</b> ${escapeHtml(item.def)}`;
+      chip.style.borderRadius = "14px";
+      chip.style.padding = "10px 12px";
+      chip.style.lineHeight = "1.25";
+      chip.style.display = "block";
+      chip.style.whiteSpace = "normal";
+      wordbank.appendChild(chip);
+    });
+
+    btnReset.addEventListener("click", resetState);
+    btnShuffle.addEventListener("click", shuffleCards);
+    btnAddCluster.addEventListener("click", addCluster);
+
+    // Init
+    resetState();
+
+    // Prevent double-tap zoom issues on iOS during drag
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (event) {
+      const now = (new Date()).getTime();
+      if (now - lastTouchEnd <= 300) { event.preventDefault(); }
+      lastTouchEnd = now;
+    }, { passive:false });
+  </script>
+</body>
+</html>
